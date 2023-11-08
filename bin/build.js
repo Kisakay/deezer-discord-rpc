@@ -36,7 +36,7 @@ console.log('Building setup...');
 const config = {
   appId: 'com.github.yuuto.deezerdiscordrpc',
   productName: 'Deezer Discord RPC',
-  icon: join(__dirname, '..', 'src', 'img', 'app.ico'),
+  icon: join(__dirname, '..', 'src', 'img', 'app.png'),
   mac: {
     category: 'public.app-category.music',
     target: 'dmg'
@@ -55,7 +55,7 @@ const config = {
   ]
 };
 
-const platform = process.argv[2];
+const platform = process.argv[2] || process.platform;
 if (!builder.Platform[platform.toUpperCase()]) throw new Error(`The platform "${platform}" is not supported for building. Supported: windows, linux, mac`);
 
 builder.build({ targets: builder.Platform[platform.toUpperCase()].createTarget(), config }).then(() => {

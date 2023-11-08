@@ -13,122 +13,122 @@ export let win: BrowserWindow;
 let currentTrack: CurrentTrack;
 
 export async function load(app: Electron.App) {
-  win = new BrowserWindow({
-    width: 1920,
-    height: 1080,
-    minimizable: true,
-    maximizable: true,
-    closable: true,
-    resizable: true,
-    center: true,
-    title: 'Deezer Discord RPC',
-    icon: join(__dirname, '..', 'img', 'app.ico'),
-    webPreferences: {
-      preload: resolve(__dirname, '..', 'preload.js')
-    }
-  });
-  win.maximize();
-  win.setMenuBarVisibility(process.platform === 'darwin');
-
-  await loadAdBlock(app, win);
-
-  await win.loadURL('https://www.deezer.com/login', {
-    // The default user agent does not work with Deezer (the player does not update by itself)
-    userAgent: userAgents.deezerApp
-  });
-
-  await setThumbarButtons();
-
-  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
-    details.requestHeaders['User-Agent'] = userAgents.deezerApp;
-    callback({ cancel: false, requestHeaders: details.requestHeaders });
-  });
-
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    delete details.responseHeaders['cross-origin-opener-policy'];
-    delete details.responseHeaders['cross-origin-opener-policy-report-only'];
-    callback({ cancel: false, responseHeaders: details.responseHeaders });
-  });
-
-  win.webContents.setWindowOpenHandler((details) => {
-    if (
-      details.url.includes('accounts.google.com') || details.url.includes('facebook.com') ||
-      details.url.includes('apple.com')
-    ) {
-      return {
-        action: 'allow',
-        overrideBrowserWindowOptions: {
-          center: true,
-          maximizable: true,
-          minimizable: true,
-          closable: true,
-          autoHideMenuBar: true,
-          fullscreenable: false,
-          resizable: true
+    win = new BrowserWindow({
+        width: 1920,
+        height: 1080,
+        minimizable: true,
+        maximizable: true,
+        closable: true,
+        resizable: true,
+        center: true,
+        title: 'Deezer Discord RPC',
+        icon: join(__dirname, '..', 'img', 'app.png'),
+        webPreferences: {
+            preload: resolve(__dirname, '..', 'preload.js')
         }
-      };
-    } else {
-      shell.openExternal(details.url);
-      return { action: 'deny' };
-    }
-  });
+    });
+    win.maximize();
+    win.setMenuBarVisibility(process.platform === 'darwin');
 
-  win.on('close', (e) => {
-    e.preventDefault();
-    win.hide();
+    await loadAdBlock(app, win);
 
-    return false;
-  });
+    await win.loadURL('https://www.deezer.com/login', {
+        // The default user agent does not work with Deezer (the player does not update by itself)
+        userAgent: userAgents.deezerApp
+    });
 
-  wait(5000).then(() => {
-    runJs(`document.querySelector('.slider-track-input.mousetrap').addEventListener('click', () => ipcRenderer.send('update_activity', true))
+    await setThumbarButtons();
+
+    session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+        details.requestHeaders['User-Agent'] = userAgents.deezerApp;
+        callback({ cancel: false, requestHeaders: details.requestHeaders });
+    });
+
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        delete details.responseHeaders['cross-origin-opener-policy'];
+        delete details.responseHeaders['cross-origin-opener-policy-report-only'];
+        callback({ cancel: false, responseHeaders: details.responseHeaders });
+    });
+
+    win.webContents.setWindowOpenHandler((details) => {
+        if (
+            details.url.includes('accounts.google.com') || details.url.includes('facebook.com') ||
+            details.url.includes('apple.com')
+        ) {
+            return {
+                action: 'allow',
+                overrideBrowserWindowOptions: {
+                    center: true,
+                    maximizable: true,
+                    minimizable: true,
+                    closable: true,
+                    autoHideMenuBar: true,
+                    fullscreenable: false,
+                    resizable: true
+                }
+            };
+        } else {
+            shell.openExternal(details.url);
+            return { action: 'deny' };
+        }
+    });
+
+    win.on('close', (e) => {
+        e.preventDefault();
+        win.hide();
+
+        return false;
+    });
+
+    wait(5000).then(() => {
+        runJs(`document.querySelector('.slider-track-input.mousetrap').addEventListener('click', () => ipcRenderer.send('update_activity', true))
                  const trackObserver = new MutationObserver(() => ipcRenderer.send('update_activity', false));
                  trackObserver.observe(document.querySelector('[data-testid="item_title"] a'), { childList: true, subtree: true, characterData: true });
                  const playingObserver = new MutationObserver(() => ipcRenderer.send('update_activity', false));
                  playingObserver.observe(document.querySelector('.chakra-button__group > button[data-testid^="play_button_"]'), { childList: true, subtree: true });`);
-    ipcMain.on('update_activity', (e, currentTimeChanged) => updateActivity(app, currentTimeChanged));
-    setThumbarButtons();
-  });
+        ipcMain.on('update_activity', (e, currentTimeChanged) => updateActivity(app, currentTimeChanged));
+        setThumbarButtons();
+    });
 }
 
 export async function setThumbarButtons() {
-  const hasPreviousSong = await runJs('!!dzPlayer.getPrevSong()');
-  const hasNextSong = await runJs('!!dzPlayer.getNextSong()');
-  const isPlaying = await runJs('dzPlayer.isPlaying()');
+    const hasPreviousSong = await runJs('!!dzPlayer.getPrevSong()');
+    const hasNextSong = await runJs('!!dzPlayer.getNextSong()');
+    const isPlaying = await runJs('dzPlayer.isPlaying()');
 
-  const updated = win.setThumbarButtons([
-    {
-      icon: nativeImage.createFromPath(join(__dirname, '..', 'img', `previous${hasPreviousSong ? '' : '_inactive'}.png`)),
-      click(){ runJs(`dzPlayer.control.prevSong()`) }
-    }, {
-      icon: nativeImage.createFromPath(join(__dirname, '..', 'img', `${isPlaying ? 'pause' : 'play'}.png`)),
-      click(){ runJs('dzPlayer.control.togglePause()') }
-    }, {
-      icon: nativeImage.createFromPath(join(__dirname, '..', 'img', `next${hasNextSong ? '' : '_inactive'}.png`)),
-      click(){ runJs(`dzPlayer.control.nextSong()`) }
+    const updated = win.setThumbarButtons([
+        {
+            icon: nativeImage.createFromPath(join(__dirname, '..', 'img', `previous${hasPreviousSong ? '' : '_inactive'}.png`)),
+            click() { runJs(`dzPlayer.control.prevSong()`) }
+        }, {
+            icon: nativeImage.createFromPath(join(__dirname, '..', 'img', `${isPlaying ? 'pause' : 'play'}.png`)),
+            click() { runJs('dzPlayer.control.togglePause()') }
+        }, {
+            icon: nativeImage.createFromPath(join(__dirname, '..', 'img', `next${hasNextSong ? '' : '_inactive'}.png`)),
+            click() { runJs(`dzPlayer.control.nextSong()`) }
+        }
+    ]);
+    if (updated) {
+        log('Thumbnail Buttons', 'Updated buttons');
+    } else {
+        log('Thumbnail Buttons', 'Failed to update buttons');
     }
-  ]);
-  if (updated) {
-    log('Thumbnail Buttons', 'Updated buttons');
-  } else {
-    log('Thumbnail Buttons', 'Failed to update buttons');
-  }
 }
 
 const UpdateReason = {
-  MUSIC_CHANGED: 'music got changed',
-  MUSIC_PAUSED: 'music got paused',
-  MUSIC_PLAYED: 'music got played',
-  MUSIC_TIME_CHANGED: 'current song time changed',
-  MUSIC_NOT_RIGHT_TIME: 'song time wasn\'t the right one'
+    MUSIC_CHANGED: 'music got changed',
+    MUSIC_PAUSED: 'music got paused',
+    MUSIC_PLAYED: 'music got played',
+    MUSIC_TIME_CHANGED: 'current song time changed',
+    MUSIC_NOT_RIGHT_TIME: 'song time wasn\'t the right one'
 };
 
 async function updateActivity(app: Electron.App, currentTimeChanged?: boolean) {
-  setThumbarButtons();
+    setThumbarButtons();
 
-  const client = (Config.get(app, 'use_listening_to') ? DiscordWebSocket : RPC).client;
-  let code =
-    `(() => {
+    const client = (Config.get(app, 'use_listening_to') ? DiscordWebSocket : RPC).client;
+    let code =
+        `(() => {
       const albumId = document.querySelector('.track-link[href*="album"]')?.getAttribute('href').split('/')[3];
       const trackId = dzPlayer.getSongId() || dzPlayer.getRadioId();
       const radioType = dzPlayer.getRadioType();
@@ -153,67 +153,67 @@ async function updateActivity(app: Electron.App, currentTimeChanged?: boolean) {
       const coverUrl = \`https://e-cdns-images.dzcdn.net/images/\${coverType}/\${cover}/256x256-000000-80-0-0.jpg\`;
       return JSON.stringify({ albumId, trackId, mediaType, playerType, trackName, albumName, artists, playing, songTime, timeLeft, coverUrl, isLivestreamRadio });
     })()`;
-  runJs(code).then(async (r) => {
-    const result: JSResult = JSON.parse(r);
-    const realSongTime = result.songTime;
-    // @ts-ignore
-    if (!currentTrack?.songTime) currentTrack?.songTime = realSongTime;
-    if (
-      currentTrack?.trackTitle !== result.trackName || currentTrack?.playing !== result.playing || currentTimeChanged === true ||
-      currentTrack?.songTime !== realSongTime
-    ) {
-      let reason;
-      if (currentTrack?.trackTitle !== result.trackName) {
-        reason = UpdateReason.MUSIC_CHANGED;
-      }
-      else if (currentTrack?.playing !== result.playing) {
-        reason = result.playing ? UpdateReason.MUSIC_PLAYED : UpdateReason.MUSIC_PAUSED;
-      }
-      else if (currentTimeChanged && currentTimeChanged === true) reason = UpdateReason.MUSIC_TIME_CHANGED;
-      else if (currentTrack?.songTime !== realSongTime) reason = UpdateReason.MUSIC_NOT_RIGHT_TIME;
-      log('Activity', 'Updating because', reason);
-      // @ts-ignore
-      currentTrack = {
-        trackId: result.trackId,
-        trackTitle: result.trackName,
-        trackArtists: result.artists || result.playerType.replace(result.playerType[0], result.playerType[0].toUpperCase()),
-        albumCover: result.coverUrl,
-        albumTitle: result.albumName || result.trackName,
-        playing: result.playing,
-      };
+    runJs(code).then(async (r) => {
+        const result: JSResult = JSON.parse(r);
+        const realSongTime = result.songTime;
+        // @ts-ignore
+        if (!currentTrack?.songTime) currentTrack?.songTime = realSongTime;
+        if (
+            currentTrack?.trackTitle !== result.trackName || currentTrack?.playing !== result.playing || currentTimeChanged === true ||
+            currentTrack?.songTime !== realSongTime
+        ) {
+            let reason;
+            if (currentTrack?.trackTitle !== result.trackName) {
+                reason = UpdateReason.MUSIC_CHANGED;
+            }
+            else if (currentTrack?.playing !== result.playing) {
+                reason = result.playing ? UpdateReason.MUSIC_PLAYED : UpdateReason.MUSIC_PAUSED;
+            }
+            else if (currentTimeChanged && currentTimeChanged === true) reason = UpdateReason.MUSIC_TIME_CHANGED;
+            else if (currentTrack?.songTime !== realSongTime) reason = UpdateReason.MUSIC_NOT_RIGHT_TIME;
+            log('Activity', 'Updating because', reason);
+            // @ts-ignore
+            currentTrack = {
+                trackId: result.trackId,
+                trackTitle: result.trackName,
+                trackArtists: result.artists || result.playerType.replace(result.playerType[0], result.playerType[0].toUpperCase()),
+                albumCover: result.coverUrl,
+                albumTitle: result.albumName || result.trackName,
+                playing: result.playing,
+            };
 
-      await setActivity({
-        client, albumId: result.albumId, timeLeft: result.timeLeft, app, ...currentTrack, songTime: realSongTime, type: result.mediaType
-      }).then(() => log('Activity', 'Updated'));
-    }
-    currentTrack.songTime = realSongTime;
-    currentTrack.trackTitle = result.trackName;
-    currentTrack.playing = result.playing;
-  });
+            await setActivity({
+                client, albumId: result.albumId, timeLeft: result.timeLeft, app, ...currentTrack, songTime: realSongTime, type: result.mediaType
+            }).then(() => log('Activity', 'Updated'));
+        }
+        currentTrack.songTime = realSongTime;
+        currentTrack.trackTitle = result.trackName;
+        currentTrack.playing = result.playing;
+    });
 }
 
 interface CurrentTrack {
-  songTime: number,
-  trackId: string,
-  trackTitle: string,
-  trackArtists: string,
-  albumTitle: string,
-  albumCover: string,
-  playing: boolean,
-  radioCover: string,
+    songTime: number,
+    trackId: string,
+    trackTitle: string,
+    trackArtists: string,
+    albumTitle: string,
+    albumCover: string,
+    playing: boolean,
+    radioCover: string,
 }
 
 interface JSResult {
-  songTime: number,
-  timeLeft: number,
-  trackName: string,
-  albumId: number,
-  playing: boolean,
-  coverUrl?: string,
-  playerType: 'track' | 'radio' | 'ad',
-  artists: string,
-  albumName: string,
-  isLivestreamRadio: boolean,
-  mediaType: string,
-  trackId: string
+    songTime: number,
+    timeLeft: number,
+    trackName: string,
+    albumId: number,
+    playing: boolean,
+    coverUrl?: string,
+    playerType: 'track' | 'radio' | 'ad',
+    artists: string,
+    albumName: string,
+    isLivestreamRadio: boolean,
+    mediaType: string,
+    trackId: string
 }

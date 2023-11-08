@@ -65,7 +65,7 @@ export async function setActivity(options: {
       startTimestamp: playing && Date.now(),
       [isLivestream ? 'startTimestamp' : 'endTimestamp']: playing && Date.now() + timeLeft,
       buttons: button ? [button] : undefined
-    }).catch(() => {});
+    }).catch(() => { });
   } else {
     const presence = new RichPresence()
       .setType('LISTENING')
@@ -74,12 +74,12 @@ export async function setActivity(options: {
       .setState(trackArtists)
       // @ts-ignore
       .setStartTimestamp(playing && Date.now())
-      // @ts-ignore
-      [isLivestream ? 'setStartTimestamp' : 'setEndTimestamp'](playing && Date.now() + timeLeft)
+    // @ts-ignore
+    [isLivestream ? 'setStartTimestamp' : 'setEndTimestamp'](playing && Date.now() + timeLeft)
       .setApplicationId(clientId)
       .setAssetsLargeImage('mp:'.concat((await RichPresence.getExternal(client, clientId, albumCover, ''))[0].external_asset_path))
       .setAssetsLargeText(albumTitle)
-    ;
+      ;
     if (button) presence.addButton(button.label, button.url);
     client.user.setActivity(presence);
   }
