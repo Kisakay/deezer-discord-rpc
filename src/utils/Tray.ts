@@ -46,7 +46,7 @@ export async function init(app: Electron.App, client: import('discord-rpc').Clie
               client.connect(clientId)
           )
             .then(() => log(Config.get(app, 'use_listening_to') ? 'WebSocket' : 'RPC', 'Reconnected'))
-            .catch(console.error)
+            .catch(console.error);
         }
       },
       {
@@ -70,6 +70,8 @@ export async function init(app: Electron.App, client: import('discord-rpc').Clie
               }
             });
           } else {
+            menuItem.enabled = false;
+            menuItem.checked = false;
             await prompt('ws', app);
           }
         }
